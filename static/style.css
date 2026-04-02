@@ -764,6 +764,11 @@ h2 {
   margin-top: 0.25rem;
 }
 
+.clip-author {
+  color: var(--accent);
+  font-weight: 500;
+}
+
 .clip-actions {
   display: flex;
   gap: 0.4rem;
@@ -827,4 +832,48 @@ h2 {
     padding: 2rem;
     gap: 2rem;
   }
+}
+
+/* ── Device online/offline states ────────────────────── */
+.device-item.offline {
+  opacity: 0.5;
+}
+
+.device-you {
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: var(--accent);
+  background: var(--accent-dim);
+  padding: 0.1rem 0.4rem;
+  border-radius: 99px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.device-offline-badge {
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  background: rgba(136, 136, 168, 0.15);
+  padding: 0.1rem 0.4rem;
+  border-radius: 99px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.device-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-shrink: 0;
+}
+
+.btn-device-rename {
+  color: var(--text-muted);
+  border-color: transparent;
+}
+
+.btn-device-rename:hover:not(:disabled) {
+  background: var(--accent-dim);
+  color: var(--accent);
 }

@@ -122,6 +122,10 @@ function getDeviceName() {
   return name;
 }
 
+function getStoredDeviceId() {
+  return localStorage.getItem("boobiki_device_id");
+}
+
 // ── Folder helpers ──────────────────────────────────────
 async function fetchFolders() {
   try {
@@ -218,7 +222,10 @@ function connectWS() {
   state.ws = ws;
 
   ws.addEventListener("open", () => {
-    ws.send(JSON.stringify({ type: "register", name: getDeviceName() }));
+    const regMsg = { type: "register", name: getDeviceName() };
+    const storedId = getStoredDeviceId();
+    if (storedId) regMsg.device_id = storedId;
+    ws.send(JSON.stringify(regMsg));
   });
 
   ws.addEventListener("message", (event) => {
@@ -250,6 +257,7 @@ function handleWSMessage(msg) {
   switch (msg.type) {
     case "registered":
       state.deviceId = msg.device_id;
+      localStorage.setItem("boobiki_device_id", msg.device_id);
       state.reconnectDelay = 1000;
       setConnected(true);
       startPing();
@@ -259,30 +267,54 @@ function handleWSMessage(msg) {
       fetchClips();
       break;
 
-    case "clip_added":
-      toast(`New clip: "${msg.text.substring(0, 50)}${msg.text.length > 50 ? '...' : ''}"`);
+    case "clip_added": {
+      const from = msg.sender ? ` from ${msg.sender}` : "";
+      toast(`New clip${from}: "${msg.text.substring(0, 50)}${msg.text.length > 50 ? '...' : ''}"`);
       fetchClips();
       break;
+    }
 
     case "device_joined":
-      if (msg.device_id !== state.deviceId) {
-        if (!state.devices.find((d) => d.id === msg.device_id)) {
+      {
+        const existing = state.devices.find((d) => String(d.id) === msg.device_id);
+        if (existing) {
+          existing.online = true;
+          existing.name = msg.name;
+        } else if (msg.device_id !== String(state.deviceId)) {
           state.devices.push({
             id: msg.device_id,
             name: msg.name,
             device_type: "browser",
+            online: true,
           });
-          renderDevices();
         }
-        toast(`${msg.name} joined`);
+        renderDevices();
+        if (msg.device_id !== String(state.deviceId)) {
+          toast(`${msg.name} joined`);
+        }
       }
       break;
 
-    case "device_left":
-      state.devices = state.devices.filter((d) => d.id !== msg.device_id);
-      renderDevices();
-      toast(`${msg.name} left`);
+    case "device_left": {
+      const dev = state.devices.find((d) => String(d.id) === msg.device_id);
+      if (dev) {
+        dev.online = false;
+        renderDevices();
+      }
+      toast(`${msg.name} went offline`);
       break;
+    }
+
+    case "device_renamed": {
+      const dev = state.devices.find((d) => String(d.id) === msg.device_id);
+      if (dev) dev.name = msg.name;
+      if (msg.device_id === String(state.deviceId)) {
+        localStorage.setItem("boobiki_device_name", msg.name);
+      }
+      renderDevices();
+      toast(`Device renamed to ${msg.name}`);
+      break;
+    }
 
     case "transfer_ready":
       toast(
@@ -295,20 +327,20 @@ function handleWSMessage(msg) {
       fetchTransfers();
       break;
 
-    case "notification":
+    case "notification": {
+      const sender = msg.sender || "Unknown";
       if (Notification.permission === "granted" && document.hidden) {
-        const notif = new Notification("Boobiki", {
-          body: msg.text,
-          icon: "/static/icons/icon-192.png",
-          tag: "boobiki-notify",
-        });
-        notif.addEventListener("click", () => {
-          window.focus();
-          notif.close();
+        navigator.serviceWorker.ready.then((reg) => {
+          reg.showNotification(`Boobiki — ${sender}`, {
+            body: msg.text,
+            icon: "/static/icons/icon-192.png",
+            tag: "boobiki-notify-" + Date.now(),
+          });
         });
       }
-      toast(`\u{1F4E2} ${msg.text}`);
+      toast(`\u{1F4E2} ${sender}: ${msg.text}`);
       break;
+    }
 
     case "pong":
       break;
@@ -349,10 +381,11 @@ function renderClips() {
   for (const clip of state.clips) {
     const li = document.createElement("li");
     li.className = "clip-item";
+    const author = clip.uploader_name || "Unknown";
     li.innerHTML = `
       <div class="clip-content">
         <div class="clip-text">${escapeHtml(clip.text)}</div>
-        <div class="clip-meta">${timeAgo(clip.created_at)}</div>
+        <div class="clip-meta"><span class="clip-author">${escapeHtml(author)}</span> &middot; ${timeAgo(clip.created_at)}</div>
       </div>
       <div class="clip-actions">
         <button class="btn btn-ghost btn-small btn-copy" data-text="${escapeHtml(clip.text)}" data-id="${clip.id}">Copy</button>
@@ -389,21 +422,18 @@ async function fetchDevices() {
   try {
     const res = await fetch("/api/devices");
     if (!res.ok) return;
-    const all = await res.json();
-    state.devices = all.filter((d) => d.id !== state.deviceId);
+    state.devices = await res.json();
     renderDevices();
-  } catch {
-    // Silently fail; devices will be populated by WS events
-  }
+  } catch { /* silent */ }
 }
 
 function renderDevices() {
-  const filtered = state.devices;
-  deviceCount.textContent = filtered.length
-    ? `${filtered.length} device${filtered.length > 1 ? "s" : ""}`
+  const all = state.devices;
+  deviceCount.textContent = all.length
+    ? `${all.length} device${all.length > 1 ? "s" : ""}`
     : "";
 
-  if (filtered.length === 0) {
+  if (all.length === 0) {
     noDevices.classList.remove("hidden");
     deviceList.querySelectorAll(".device-item").forEach((el) => el.remove());
     return;
@@ -412,20 +442,35 @@ function renderDevices() {
   noDevices.classList.add("hidden");
   deviceList.innerHTML = "";
 
-  for (const device of filtered) {
+  // Sort: own device first, then online, then offline
+  const sorted = [...all].sort((a, b) => {
+    if (String(a.id) === String(state.deviceId)) return -1;
+    if (String(b.id) === String(state.deviceId)) return 1;
+    if (a.online !== b.online) return a.online ? -1 : 1;
+    return 0;
+  });
+
+  for (const device of sorted) {
     const li = document.createElement("li");
     li.className = "device-item";
+    if (!device.online) li.classList.add("offline");
     li.dataset.id = device.id;
 
-    const icon =
-      device.device_type === "server" ? "&#128421;" : "&#128187;";
+    const isSelf = String(device.id) === String(state.deviceId);
+    const icon = device.device_type === "server" ? "&#128421;" : "&#128187;";
 
     li.innerHTML = `
       <div class="device-info">
         <span class="device-icon" aria-hidden="true">${icon}</span>
         <span class="device-name">${escapeHtml(device.name)}</span>
+        ${isSelf ? '<span class="device-you">You</span>' : ""}
+        ${!device.online ? '<span class="device-offline-badge">Offline</span>' : ""}
       </div>
-      <span class="device-type">${device.device_type}</span>
+      <div class="device-actions">
+        ${isSelf ? '<button class="btn btn-ghost btn-small btn-device-rename">Rename</button>' : ""}
+        ${!isSelf ? '<button class="btn btn-ghost btn-small btn-delete btn-device-delete" data-device-id="' + device.id + '">Delete</button>' : ""}
+        ${!device.online ? '<span class="device-type">offline</span>' : `<span class="device-type">${device.device_type}</span>`}
+      </div>
     `;
 
     deviceList.appendChild(li);
@@ -437,9 +482,10 @@ function renderDevices() {
 function updateNotifyTargets() {
   notifyTarget.innerHTML = '<option value="all">All Devices</option>';
   for (const d of state.devices) {
+    if (String(d.id) === String(state.deviceId)) continue;
     const opt = document.createElement("option");
     opt.value = d.id;
-    opt.textContent = d.name;
+    opt.textContent = d.name + (d.online ? "" : " (offline)");
     notifyTarget.appendChild(opt);
   }
 }
@@ -581,8 +627,55 @@ transferList.addEventListener("change", async (e) => {
   } catch { toast("Move failed"); }
 });
 
+// ── Device list handlers (event delegation) ─────────────
+deviceList.addEventListener("click", async (e) => {
+  const renameBtn = e.target.closest(".btn-device-rename");
+  if (renameBtn) {
+    const currentName = localStorage.getItem("boobiki_device_name") || "Device";
+    state.renameTargetId = "__device__";
+    renameInput.value = currentName;
+    document.querySelector(".modal-title").textContent = "Rename Device";
+    renameModal.classList.remove("hidden");
+    renameInput.focus();
+    renameInput.select();
+    return;
+  }
+
+  const deleteBtn = e.target.closest(".btn-device-delete");
+  if (deleteBtn) {
+    const deviceId = deleteBtn.dataset.deviceId;
+    try {
+      const res = await fetch(`/api/devices/${deviceId}`, { method: "DELETE" });
+      if (res.ok) {
+        state.devices = state.devices.filter((d) => String(d.id) !== deviceId);
+        renderDevices();
+        toast("Device removed");
+      } else { toast("Delete failed"); }
+    } catch { toast("Delete failed"); }
+  }
+});
+
 // ── Rename modal handlers ───────────────────────────────
 renameConfirm.addEventListener("click", async () => {
+  if (state.renameTargetId === "__device__") {
+    const newName = renameInput.value.trim();
+    if (!newName || !state.deviceId) { renameModal.classList.add("hidden"); return; }
+    try {
+      const res = await fetch(`/api/devices/${state.deviceId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: newName }),
+      });
+      if (res.ok) {
+        localStorage.setItem("boobiki_device_name", newName);
+        toast("Device renamed");
+      } else { toast("Rename failed"); }
+    } catch { toast("Rename failed"); }
+    renameModal.classList.add("hidden");
+    state.renameTargetId = null;
+    document.querySelector(".modal-title").textContent = "Rename File";
+    return;
+  }
   if (!state.renameTargetId || !renameInput.value.trim()) return;
   try {
     const res = await fetch(`/api/transfers/${state.renameTargetId}`, {
@@ -798,7 +891,18 @@ clipList.addEventListener("click", async (e) => {
 });
 
 // ── Notifications ──────────────────────────────────────
+function isNativeApp() {
+  return navigator.userAgent.includes("BoobikiApp");
+}
+
 function initNotifications() {
+  if (isNativeApp()) {
+    notifyPermissionBtn.textContent = "Via App";
+    notifyPermissionBtn.disabled = true;
+    notifyPermissionBtn.classList.add("btn-primary");
+    notifyPermissionBtn.classList.remove("btn-ghost");
+    return;
+  }
   if (!("Notification" in window)) {
     notifyPermissionBtn.textContent = "Not supported";
     notifyPermissionBtn.disabled = true;
@@ -837,6 +941,7 @@ async function sendNotification() {
   const targetValue = notifyTarget.value;
   const body = {
     text,
+    sender_device_id: state.deviceId,
     target_device_id: targetValue === "all" ? null : targetValue,
   };
 
@@ -869,12 +974,64 @@ notifyInput.addEventListener("keydown", (e) => {
   }
 });
 
-// ── Service worker registration ─────────────────────────
-if ("serviceWorker" in navigator) {
-  navigator.serviceWorker.register("/sw.js").catch(() => {
-    // SW registration failed; app works fine without it
-  });
+// ── Service worker + push subscription ─────────────────
+if ("serviceWorker" in navigator && !isNativeApp()) {
+  navigator.serviceWorker.register("/sw.js").catch(() => {});
 }
+
+async function initPushSubscription() {
+  if (isNativeApp()) return;
+  if (!("serviceWorker" in navigator) || !("PushManager" in window)) return;
+
+  try {
+    const reg = await navigator.serviceWorker.ready;
+
+    // Fetch VAPID public key from server
+    const res = await fetch("/api/push/vapid-key");
+    if (!res.ok) return;
+    const { public_key } = await res.json();
+
+    // Convert base64url to Uint8Array
+    const padding = "=".repeat((4 - (public_key.length % 4)) % 4);
+    const base64 = public_key.replace(/-/g, "+").replace(/_/g, "/") + padding;
+    const raw = atob(base64);
+    const key = new Uint8Array(raw.length);
+    for (let i = 0; i < raw.length; i++) key[i] = raw.charCodeAt(i);
+
+    // Subscribe to push (or get existing subscription)
+    let sub = await reg.pushManager.getSubscription();
+    if (!sub) {
+      sub = await reg.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: key,
+      });
+    }
+
+    // Send subscription to server (wait for device ID)
+    const waitForDeviceId = () =>
+      new Promise((resolve) => {
+        const check = () => {
+          if (state.deviceId) return resolve(state.deviceId);
+          setTimeout(check, 200);
+        };
+        check();
+      });
+
+    const deviceId = await waitForDeviceId();
+    await fetch("/api/push/subscribe", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        device_id: String(deviceId),
+        subscription: sub.toJSON(),
+      }),
+    });
+  } catch {
+    // Push subscription failed; WS notifications still work
+  }
+}
+
+initPushSubscription();
 
 // ── Bootstrap ───────────────────────────────────────────
 connectWS();

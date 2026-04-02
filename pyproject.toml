@@ -13,6 +13,7 @@ dependencies = [
     "zeroconf>=0.146",
     "python-multipart>=0.0.20",
     "pydantic-settings>=2.8",
+    "pywebpush>=2.3.0",
 ]
 
 [dependency-groups]
@@ -38,3 +39,7 @@ testpaths = ["tests"]
 [tool.mypy]
 python_version = "3.13"
 strict = true
+
+[[tool.mypy.overrides]]
+module = ["py_vapid", "pywebpush"]
+ignore_missing_imports = true

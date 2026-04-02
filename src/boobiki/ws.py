@@ -35,14 +35,35 @@ class ConnectionManager:
         return device_id
 
     async def disconnect(self, device_id: UUID) -> None:
-        """Remove connection and device, broadcast leave."""
+        """Remove connection and mark device offline, broadcast leave."""
         self._connections.pop(device_id, None)
         device = self._registry.get(device_id)
         name = device.name if device else "unknown"
-        self._registry.remove(device_id)
+        self._registry.mark_offline(device_id)
         await self.broadcast(
             {"type": "device_left", "device_id": str(device_id), "name": name},
         )
+
+    async def reconnect(self, ws: WebSocket, device_id: UUID, device_name: str) -> UUID:
+        """Reconnect an existing device. Returns device_id."""
+        self._connections[device_id] = ws
+        device = self._registry.get(device_id)
+        if device:
+            device.name = device_name
+            self._registry.mark_online(device_id)
+        else:
+            # Device was cleaned up, re-add
+            client = ws.scope.get("client")
+            ip = client[0] if client else ""
+            new_device = Device(
+                id=device_id, name=device_name, device_type=DeviceType.BROWSER, ip=ip
+            )
+            self._registry.add(new_device)
+        await self.broadcast(
+            {"type": "device_joined", "device_id": str(device_id), "name": device_name},
+            exclude=device_id,
+        )
+        return device_id
 
     async def send_to(self, device_id: UUID, message: dict[str, object]) -> None:
         """Send JSON message to a specific device."""

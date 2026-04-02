@@ -18,6 +18,7 @@ class Device:
     ip: str = ""
     port: int = 0
     last_seen: datetime = field(default_factory=lambda: datetime.now(tz=UTC))
+    online: bool = True
 
 
 @unique
@@ -53,4 +54,5 @@ class Clip:
     id: UUID = field(default_factory=uuid4)
     text: str = ""
     uploader_id: UUID = field(default_factory=uuid4)
+    uploader_name: str = ""
     created_at: datetime = field(default_factory=lambda: datetime.now(tz=UTC))

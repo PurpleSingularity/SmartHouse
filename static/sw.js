@@ -1,4 +1,4 @@
-const CACHE_NAME = "boobiki-v4";
+const CACHE_NAME = "boobiki-v6";
 const PRECACHE_URLS = [
   "/",
   "/static/style.css",
@@ -55,6 +55,40 @@ self.addEventListener("fetch", (event) => {
         .catch(() => cached);
 
       return cached || fetchPromise;
+    })
+  );
+});
+
+// Push: show notification from Web Push
+self.addEventListener("push", (event) => {
+  let data = { title: "Boobiki", body: "New notification" };
+  if (event.data) {
+    try {
+      data = event.data.json();
+    } catch {
+      data.body = event.data.text();
+    }
+  }
+  event.waitUntil(
+    self.registration.showNotification(data.title || "Boobiki", {
+      body: data.body,
+      icon: data.icon || "/static/icons/icon-192.png",
+      tag: "boobiki-notify",
+    })
+  );
+});
+
+// Notification click: focus or open the app
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+  event.waitUntil(
+    clients.matchAll({ type: "window", includeUncontrolled: true }).then((windowClients) => {
+      for (const client of windowClients) {
+        if (client.url.includes(self.location.origin) && "focus" in client) {
+          return client.focus();
+        }
+      }
+      return clients.openWindow("/");
     })
   );
 });

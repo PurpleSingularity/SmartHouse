@@ -30,3 +30,35 @@ class DeviceRegistry:
         device = self._devices.get(device_id)
         if device:
             device.last_seen = datetime.now(tz=UTC)
+
+    def mark_offline(self, device_id: UUID) -> None:
+        device = self._devices.get(device_id)
+        if device:
+            device.online = False
+            device.last_seen = datetime.now(tz=UTC)
+
+    def mark_online(self, device_id: UUID) -> None:
+        device = self._devices.get(device_id)
+        if device:
+            device.online = True
+            device.last_seen = datetime.now(tz=UTC)
+
+    def rename(self, device_id: UUID, new_name: str) -> Device | None:
+        device = self._devices.get(device_id)
+        if device:
+            device.name = new_name
+            return device
+        return None
+
+    def cleanup_stale(self, max_offline_hours: int) -> int:
+        now = datetime.now(tz=UTC)
+        stale_ids = [
+            did
+            for did, d in self._devices.items()
+            if not d.online
+            and (now - d.last_seen).total_seconds() > max_offline_hours * 3600
+        ]
+        for did in stale_ids:
+            self._devices.pop(did, None)
+            logger.info("Removed stale device: %s", did)
+        return len(stale_ids)

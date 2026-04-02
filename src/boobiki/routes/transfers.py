@@ -1,3 +1,5 @@
+import asyncio
+import json
 import logging
 from datetime import datetime
 from typing import Annotated
@@ -6,8 +8,10 @@ from uuid import UUID
 from fastapi import APIRouter, Form, HTTPException, Request, UploadFile
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
+from pywebpush import WebPushException, webpush
 
 from boobiki.models import TransferMode, TransferStatus
+from boobiki.push import PushStore
 from boobiki.transfers import TransferManager
 from boobiki.ws import ConnectionManager
 
@@ -193,6 +197,7 @@ class ClipResponse(BaseModel):
     id: UUID
     text: str
     uploader_id: UUID
+    uploader_name: str
     created_at: datetime
 
 
@@ -201,20 +206,26 @@ async def create_clip(request: Request, body: ClipCreateRequest) -> ClipResponse
     """Share a text clip to the clipboard."""
     manager: TransferManager = request.app.state.transfer_manager
     ws_manager: ConnectionManager = request.app.state.connection_manager
+    registry = request.app.state.device_registry
 
-    clip = manager.add_clip(body.text, body.uploader_id)
+    sender = registry.get(body.uploader_id)
+    sender_name = sender.name if sender else "Unknown"
+
+    clip = manager.add_clip(body.text, body.uploader_id, uploader_name=sender_name)
 
     await ws_manager.broadcast({
         "type": "clip_added",
         "clip_id": str(clip.id),
-        "text": clip.text[:100],  # preview in notification
+        "text": clip.text[:100],
         "uploader_id": str(clip.uploader_id),
+        "sender": sender_name,
     })
 
     return ClipResponse(
         id=clip.id,
         text=clip.text,
         uploader_id=clip.uploader_id,
+        uploader_name=clip.uploader_name,
         created_at=clip.created_at,
     )
 
@@ -224,7 +235,10 @@ async def list_clips(request: Request) -> list[ClipResponse]:
     """List all shared clips, newest first."""
     manager: TransferManager = request.app.state.transfer_manager
     return [
-        ClipResponse(id=c.id, text=c.text, uploader_id=c.uploader_id, created_at=c.created_at)
+        ClipResponse(
+            id=c.id, text=c.text, uploader_id=c.uploader_id,
+            uploader_name=c.uploader_name, created_at=c.created_at,
+        )
         for c in manager.list_clips()
     ]
 
@@ -240,6 +254,7 @@ async def delete_clip(request: Request, clip_id: UUID) -> None:
 
 class NotificationRequest(BaseModel):
     text: str
+    sender_device_id: UUID | None = None
     target_device_id: UUID | None = None  # None = broadcast to all
 
 
@@ -247,10 +262,19 @@ class NotificationRequest(BaseModel):
 async def send_notification(request: Request, body: NotificationRequest) -> dict[str, str]:
     """Send a notification to all devices or a specific device."""
     ws_manager: ConnectionManager = request.app.state.connection_manager
+    registry = request.app.state.device_registry
+    settings = request.app.state.settings
+
+    sender_name = "Unknown"
+    if body.sender_device_id:
+        device = registry.get(body.sender_device_id)
+        if device:
+            sender_name = device.name
 
     message: dict[str, object] = {
         "type": "notification",
         "text": body.text,
+        "sender": sender_name,
     }
 
     if body.target_device_id:
@@ -258,4 +282,54 @@ async def send_notification(request: Request, body: NotificationRequest) -> dict
     else:
         await ws_manager.broadcast(message)
 
+    # Also send via Web Push for mobile/backgrounded devices
+    push_store: PushStore = request.app.state.push_store
+    target = str(body.target_device_id) if body.target_device_id else None
+    push_text = f"{sender_name}: {body.text}"
+    await asyncio.to_thread(
+        _send_push, push_text, target, settings.vapid_private_key, settings.vapid_email,
+        push_store,
+    )
+
     return {"status": "sent"}
+
+
+def _send_push(
+    text: str,
+    target_device_id: str | None,
+    vapid_private_key: str,
+    vapid_email: str,
+    push_store: PushStore,
+) -> None:
+    subs = push_store.get_all()
+    if target_device_id:
+        sub = subs.get(target_device_id)
+        targets = {target_device_id: sub} if sub else {}
+    else:
+        targets = dict(subs)
+
+    payload = json.dumps({
+        "title": "Boobiki",
+        "body": text,
+        "icon": "/static/icons/icon-192.png",
+    })
+    stale: list[str] = []
+
+    for did, sub_info in targets.items():
+        try:
+            webpush(
+                subscription_info=sub_info,
+                data=payload,
+                vapid_private_key=vapid_private_key,
+                vapid_claims={"sub": f"mailto:{vapid_email}"},
+                headers={"Urgency": "high", "TTL": "86400"},
+            )
+        except WebPushException as exc:
+            logger.warning("Push failed for %s: %s", did, exc)
+            if "410" in str(exc) or "404" in str(exc):
+                stale.append(did)
+        except Exception:
+            logger.warning("Push failed for %s", did, exc_info=True)
+
+    if stale:
+        push_store.remove_stale(stale)

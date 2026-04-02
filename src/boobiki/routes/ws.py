@@ -1,8 +1,10 @@
+import contextlib
 import logging
-from uuid import UUID
+from uuid import UUID, uuid4
 
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 
+from boobiki.models import Device, DeviceType
 from boobiki.ws import ConnectionManager
 
 logger = logging.getLogger(__name__)
@@ -27,20 +29,44 @@ async def websocket_endpoint(ws: WebSocket) -> None:
 
     # Bypass manager.connect() which calls accept() again.
     # Build the Device ourselves and register directly.
-    from uuid import uuid4
+    raw_id = data.get("device_id")
+    device_id: UUID | None = None
+    if raw_id:
+        with contextlib.suppress(ValueError):
+            device_id = UUID(str(raw_id))
 
-    from boobiki.models import Device, DeviceType
-
-    device_id: UUID = uuid4()
-    client = ws.scope.get("client")
-    ip = client[0] if client else ""
-    device = Device(id=device_id, name=device_name, device_type=DeviceType.BROWSER, ip=ip)
-    manager._connections[device_id] = ws  # noqa: SLF001
-    manager._registry.add(device)  # noqa: SLF001
-    await manager.broadcast(
-        {"type": "device_joined", "device_id": str(device_id), "name": device_name},
-        exclude=device_id,
-    )
+    if device_id:
+        # Reconnecting existing device
+        manager._connections[device_id] = ws  # noqa: SLF001
+        existing = manager._registry.get(device_id)  # noqa: SLF001
+        if existing:
+            existing.name = device_name
+            manager._registry.mark_online(device_id)  # noqa: SLF001
+        else:
+            client = ws.scope.get("client")
+            ip = client[0] if client else ""
+            device = Device(
+                id=device_id, name=device_name, device_type=DeviceType.BROWSER, ip=ip
+            )
+            manager._registry.add(device)  # noqa: SLF001
+        await manager.broadcast(
+            {"type": "device_joined", "device_id": str(device_id), "name": device_name},
+            exclude=device_id,
+        )
+    else:
+        # New device
+        device_id = uuid4()
+        client = ws.scope.get("client")
+        ip = client[0] if client else ""
+        device = Device(
+            id=device_id, name=device_name, device_type=DeviceType.BROWSER, ip=ip
+        )
+        manager._connections[device_id] = ws  # noqa: SLF001
+        manager._registry.add(device)  # noqa: SLF001
+        await manager.broadcast(
+            {"type": "device_joined", "device_id": str(device_id), "name": device_name},
+            exclude=device_id,
+        )
 
     await ws.send_json({"type": "registered", "device_id": str(device_id)})
 

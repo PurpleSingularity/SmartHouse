@@ -10,11 +10,13 @@ from fastapi import FastAPI
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
-from boobiki.config import Settings
+from boobiki.config import Settings, load_or_generate_vapid
 from boobiki.devices import DeviceRegistry
 from boobiki.discovery import DiscoveryService
+from boobiki.push import PushStore
 from boobiki.routes.devices import router as devices_router
 from boobiki.routes.health import router as health_router
+from boobiki.routes.push import router as push_router
 from boobiki.routes.transfers import router as transfers_router
 from boobiki.routes.ws import router as ws_router
 from boobiki.transfers import TransferManager
@@ -28,7 +30,14 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     settings = Settings()
     if not settings.device_name:
         settings.device_name = socket.gethostname()
+    if not settings.vapid_private_key or not settings.vapid_public_key:
+        priv, pub = load_or_generate_vapid(settings.data_dir)
+        settings.vapid_private_key = priv
+        settings.vapid_public_key = pub
     app.state.settings = settings
+
+    push_store = PushStore(data_dir=Path(settings.data_dir))
+    app.state.push_store = push_store
 
     registry = DeviceRegistry()
     app.state.device_registry = registry
@@ -53,6 +62,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         while True:
             await asyncio.sleep(3600)  # every hour
             await transfer_manager.cleanup_expired()
+            registry.cleanup_stale(max_offline_hours=24)
 
     cleanup_task = asyncio.create_task(_cleanup_loop())
 
@@ -72,6 +82,7 @@ def create_app() -> FastAPI:
     app.include_router(health_router)
     app.include_router(devices_router)
     app.include_router(transfers_router)
+    app.include_router(push_router)
     app.include_router(ws_router)
 
     @app.get("/")

@@ -77,6 +77,7 @@ class TransferManager:
                     "id": str(c.id),
                     "text": c.text,
                     "uploader_id": str(c.uploader_id),
+                    "uploader_name": c.uploader_name,
                     "created_at": c.created_at.isoformat(),
                 }
                 for c in self._clips
@@ -114,6 +115,7 @@ class TransferManager:
                     id=UUID(c_data["id"]),
                     text=c_data["text"],
                     uploader_id=UUID(c_data["uploader_id"]),
+                    uploader_name=c_data.get("uploader_name", ""),
                     created_at=datetime.fromisoformat(c_data["created_at"]),
                 )
                 self._clips.append(clip)
@@ -358,9 +360,9 @@ class TransferManager:
 
     # -- Clipboard -------------------------------------------------------------
 
-    def add_clip(self, text: str, uploader_id: UUID) -> Clip:
+    def add_clip(self, text: str, uploader_id: UUID, uploader_name: str = "") -> Clip:
         """Add a text clip to the shared clipboard."""
-        clip = Clip(text=text, uploader_id=uploader_id)
+        clip = Clip(text=text, uploader_id=uploader_id, uploader_name=uploader_name)
         self._clips.insert(0, clip)  # newest first
         # Keep max 50 clips
         if len(self._clips) > 50:
