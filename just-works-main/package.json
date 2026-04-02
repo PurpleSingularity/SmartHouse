@@ -1,0 +1,39 @@
+{
+  "name": "@dynokostya/just-works",
+  "version": "1.0.0",
+  "description": "Drop-in AI agent workflows, coding skills, and prompt standards for Claude Code and OpenAI Codex",
+  "type": "module",
+  "bin": {
+    "just-works": "bin/cli.mjs"
+  },
+  "files": [
+    "bin/",
+    ".claude/agents/",
+    ".claude/commands/",
+    ".claude/skills/",
+    ".claude/settings.json",
+    ".claude/settings.json.default",
+    ".claude/statusline-command.sh",
+    ".codex/prompts/",
+    ".codex/skills/",
+    "CLAUDE.md",
+    "AGENTS.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "keywords": [
+    "claude",
+    "codex",
+    "ai",
+    "agents",
+    "skills",
+    "config"
+  ],
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/dynokostya/just-works.git"
+  }
+}

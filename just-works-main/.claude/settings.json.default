@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "allow": [],
+    "deny": []
+  },
+  "hooks": {},
+  "outputStyle": "default",
+  "spinnerTipsEnabled": true,
+  "plansDirectory": "./.claude/plans",
+  "statusLine": {
+    "type": "command",
+    "command": "bash ~/.claude/statusline-command.sh"
+  }
+}
+  

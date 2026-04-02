@@ -1,0 +1,28 @@
+Project Description
+
+This project is designed for personal use within a local WiFi network.
+Initially, the project will be deployed on a PC, where it is developed as a server,
+but will later be moved to a dedicated server. The project is an application designed
+for various interactions between devices within the network: transferring messages, files,
+displaying notifications, and so on. The application must be extensible and capable of acquiring
+new features. This document is used to document the application's features, both complete and
+under development.
+
+The working title of the application is Boobiki.
+
+Tech Stack:
+- Server: Python 3.13, FastAPI + Uvicorn
+- Client: Web UI served by the server, built as a PWA (Progressive Web App)
+- Device discovery: Zeroconf/mDNS (automatic, no manual IP configuration)
+- Network: WiFi LAN — no internet required, all communication is local
+
+Design Principles:
+- PC and mobile devices must have an equally effective experience
+- The Web UI must be fully responsive and installable as a PWA on mobile
+- The architecture must be extensible — new features can be added without restructuring
+- All devices on the same WiFi network can discover and interact with each other automatically
+
+Features:
+- [In Progress] File Transfer: Devices within the local area network should be able to
+  exchange files (if device 1 and device 2 are connected to Boobiki, they can transfer
+  files directly to each other).

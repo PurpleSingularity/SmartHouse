@@ -1,0 +1,17 @@
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
+data/
+logs/
+fast_transfer_storage/
+storage/
+boobiki_state.json
+.env
+*.egg-info/
+dist/
+build/
+.claude/plans/*.md

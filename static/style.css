@@ -1,0 +1,830 @@
+/* ── Reset & base ─────────────────────────────────────── */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+:root {
+  --bg: #0f0f1a;
+  --bg-card: #1a1a2e;
+  --bg-card-hover: #222240;
+  --bg-input: #16162b;
+  --accent: #6c63ff;
+  --accent-hover: #5a52e0;
+  --accent-dim: rgba(108, 99, 255, 0.15);
+  --text: #e8e8f0;
+  --text-muted: #8888a8;
+  --text-heading: #ffffff;
+  --border: #2a2a45;
+  --success: #2ed573;
+  --warning: #ffa502;
+  --danger: #ff4757;
+  --radius: 10px;
+  --radius-sm: 6px;
+  --transition: 0.2s ease;
+  --font: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+    Helvetica, Arial, sans-serif;
+}
+
+html {
+  font-family: var(--font);
+  background: var(--bg);
+  color: var(--text);
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+body {
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ── Typography ──────────────────────────────────────── */
+h1,
+h2,
+h3 {
+  color: var(--text-heading);
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+h1 {
+  font-size: 1.5rem;
+}
+
+h2 {
+  font-size: 1.15rem;
+}
+
+/* ── Layout ──────────────────────────────────────────── */
+.app-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1rem 1.25rem;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg-card);
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.app-header .logo {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--danger);
+  flex-shrink: 0;
+}
+
+.status-dot.connected {
+  background: var(--success);
+}
+
+.app-main {
+  flex: 1;
+  padding: 1.25rem;
+  max-width: 720px;
+  width: 100%;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+/* ── Sections ────────────────────────────────────────── */
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+/* ── Cards ────────────────────────────────────────────── */
+.card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1rem;
+  transition: background var(--transition);
+}
+
+.card:hover {
+  background: var(--bg-card-hover);
+}
+
+/* ── Device list ──────────────────────────────────────── */
+.device-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.device-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 0.75rem 1rem;
+  cursor: pointer;
+  transition: background var(--transition), border-color var(--transition);
+}
+
+.device-item:hover,
+.device-item.selected {
+  background: var(--bg-card-hover);
+  border-color: var(--accent);
+}
+
+.device-item .device-info {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  min-width: 0;
+}
+
+.device-item .device-icon {
+  font-size: 1.25rem;
+  flex-shrink: 0;
+}
+
+.device-item .device-name {
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.device-item .device-type {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+/* ── Empty state ──────────────────────────────────────── */
+.empty-state {
+  text-align: center;
+  color: var(--text-muted);
+  padding: 2rem 1rem;
+  font-size: 0.9rem;
+}
+
+/* ── Buttons ──────────────────────────────────────────── */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  font-family: inherit;
+  font-size: 0.875rem;
+  font-weight: 500;
+  border: none;
+  border-radius: var(--radius-sm);
+  padding: 0.6rem 1.2rem;
+  cursor: pointer;
+  transition: background var(--transition), opacity var(--transition);
+  white-space: nowrap;
+}
+
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn-primary {
+  background: var(--accent);
+  color: #fff;
+}
+
+.btn-primary:hover:not(:disabled) {
+  background: var(--accent-hover);
+}
+
+.btn-ghost {
+  background: transparent;
+  color: var(--text);
+  border: 1px solid var(--border);
+}
+
+.btn-ghost:hover:not(:disabled) {
+  background: var(--bg-card-hover);
+}
+
+.btn-small {
+  font-size: 0.8rem;
+  padding: 0.4rem 0.8rem;
+}
+
+.btn-icon {
+  padding: 0.5rem;
+  font-size: 1.1rem;
+}
+
+/* ── File drop zone ───────────────────────────────────── */
+.drop-zone {
+  border: 2px dashed var(--border);
+  border-radius: var(--radius);
+  padding: 2rem 1rem;
+  text-align: center;
+  color: var(--text-muted);
+  transition: border-color var(--transition), background var(--transition);
+  cursor: pointer;
+  position: relative;
+}
+
+.drop-zone:hover {
+  border-color: var(--accent);
+}
+
+.drop-zone.drag-over {
+  border-color: var(--accent);
+  background: var(--accent-dim);
+}
+
+.drop-zone input[type="file"] {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.drop-zone-icon {
+  font-size: 2rem;
+  margin-bottom: 0.5rem;
+}
+
+.drop-zone-text {
+  font-size: 0.9rem;
+}
+
+.drop-zone-hint {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  margin-top: 0.25rem;
+}
+
+/* ── Transfer list ────────────────────────────────────── */
+.transfer-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.transfer-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 0.75rem 1rem;
+}
+
+.transfer-info {
+  min-width: 0;
+  flex: 1;
+}
+
+.transfer-filename {
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.transfer-meta {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  display: flex;
+  gap: 0.75rem;
+  margin-top: 0.15rem;
+}
+
+.transfer-actions {
+  flex-shrink: 0;
+}
+
+/* ── Progress bar ─────────────────────────────────────── */
+.progress-bar {
+  width: 100%;
+  height: 4px;
+  background: var(--border);
+  border-radius: 2px;
+  overflow: hidden;
+  margin-top: 0.4rem;
+}
+
+.progress-bar-fill {
+  height: 100%;
+  background: var(--accent);
+  border-radius: 2px;
+  transition: width 0.3s ease;
+}
+
+/* ── Status badge ─────────────────────────────────────── */
+.badge {
+  display: inline-block;
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 0.15rem 0.5rem;
+  border-radius: 99px;
+  white-space: nowrap;
+}
+
+.badge-pending {
+  background: rgba(255, 165, 2, 0.15);
+  color: var(--warning);
+}
+
+.badge-uploading {
+  background: var(--accent-dim);
+  color: var(--accent);
+}
+
+.badge-ready {
+  background: rgba(46, 213, 115, 0.15);
+  color: var(--success);
+}
+
+.badge-downloaded {
+  background: rgba(136, 136, 168, 0.15);
+  color: var(--text-muted);
+}
+
+.badge-expired {
+  background: rgba(255, 71, 87, 0.15);
+  color: var(--danger);
+}
+
+/* ── Toast / notification ─────────────────────────────── */
+.toast-container {
+  position: fixed;
+  bottom: 1.25rem;
+  right: 1.25rem;
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  pointer-events: none;
+}
+
+.toast {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 0.75rem 1rem;
+  font-size: 0.85rem;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+  pointer-events: auto;
+  animation: toast-in 0.25s ease;
+  max-width: 320px;
+}
+
+.toast.toast-exit {
+  animation: toast-out 0.2s ease forwards;
+}
+
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes toast-out {
+  from {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+}
+
+/* ── Modal / dialog ───────────────────────────────────── */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 50;
+  padding: 1rem;
+  animation: fade-in 0.15s ease;
+}
+
+.modal {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1.5rem;
+  width: 100%;
+  max-width: 400px;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.modal-title {
+  font-size: 1.1rem;
+  font-weight: 600;
+}
+
+.modal-actions {
+  display: flex;
+  gap: 0.5rem;
+  justify-content: flex-end;
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* ── Input ────────────────────────────────────────────── */
+.input {
+  font-family: inherit;
+  font-size: 0.875rem;
+  background: var(--bg-input);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 0.6rem 0.8rem;
+  outline: none;
+  width: 100%;
+  transition: border-color var(--transition);
+}
+
+.input:focus {
+  border-color: var(--accent);
+}
+
+.input::placeholder {
+  color: var(--text-muted);
+}
+
+/* ── Utilities ────────────────────────────────────────── */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border-width: 0;
+}
+
+.text-muted {
+  color: var(--text-muted);
+}
+
+.text-sm {
+  font-size: 0.8rem;
+}
+
+.hidden {
+  display: none !important;
+}
+
+/* ── Mode toggle ──────────────────────────────────────── */
+.mode-toggle {
+  display: flex;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  margin-top: 0.75rem;
+}
+
+.mode-btn {
+  flex: 1;
+  font-family: inherit;
+  font-size: 0.85rem;
+  font-weight: 500;
+  padding: 0.5rem 1rem;
+  border: none;
+  background: var(--bg-card);
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: background var(--transition), color var(--transition);
+  min-height: 44px;
+}
+
+.mode-btn.active {
+  background: var(--accent);
+  color: #fff;
+}
+
+.mode-btn:hover:not(.active) {
+  background: var(--bg-card-hover);
+}
+
+/* ── Transfer filter tabs ────────────────────────────── */
+.transfer-tabs {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.tab-btn {
+  font-family: inherit;
+  font-size: 0.8rem;
+  font-weight: 500;
+  padding: 0.3rem 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: 99px;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: background var(--transition), color var(--transition), border-color var(--transition);
+  min-height: 44px;
+}
+
+.tab-btn.active {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: var(--accent-dim);
+}
+
+.tab-btn:hover:not(.active) {
+  background: var(--bg-card-hover);
+}
+
+/* ── Mode badges ──────────────────────────────────────── */
+.badge-mode-fast_transfer {
+  background: rgba(255, 165, 2, 0.15);
+  color: var(--warning);
+}
+
+.badge-mode-storage {
+  background: rgba(108, 99, 255, 0.15);
+  color: var(--accent);
+}
+
+/* ── Delete button ────────────────────────────────────── */
+.btn-delete {
+  color: var(--danger);
+  border-color: transparent;
+}
+
+.btn-delete:hover:not(:disabled) {
+  background: rgba(255, 71, 87, 0.15);
+  border-color: var(--danger);
+}
+
+/* ── Folder bar ──────────────────────────────────────── */
+.folder-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.folder-actions {
+  display: flex;
+  gap: 0.4rem;
+  flex-shrink: 0;
+}
+
+/* ── Breadcrumb ──────────────────────────────────────── */
+.breadcrumb {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.85rem;
+  min-width: 0;
+  overflow-x: auto;
+}
+
+.breadcrumb-segment {
+  color: var(--text-muted);
+  background: none;
+  border: none;
+  font-family: inherit;
+  font-size: inherit;
+  cursor: pointer;
+  padding: 0.2rem 0.4rem;
+  border-radius: var(--radius-sm);
+  white-space: nowrap;
+  transition: background var(--transition), color var(--transition);
+}
+
+.breadcrumb-segment:hover {
+  background: var(--bg-card-hover);
+  color: var(--text);
+}
+
+.breadcrumb-segment.current {
+  color: var(--text);
+  font-weight: 500;
+  cursor: default;
+}
+
+.breadcrumb-separator {
+  color: var(--text-muted);
+  user-select: none;
+}
+
+/* ── Folder item in transfer list ────────────────────── */
+.folder-item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 0.75rem 1rem;
+  cursor: pointer;
+  transition: background var(--transition), border-color var(--transition);
+}
+
+.folder-item:hover {
+  background: var(--bg-card-hover);
+  border-color: var(--accent);
+}
+
+.folder-icon {
+  font-size: 1.25rem;
+  flex-shrink: 0;
+}
+
+.folder-name {
+  font-weight: 500;
+}
+
+/* ── Rename button ───────────────────────────────────── */
+.btn-rename {
+  color: var(--text-muted);
+  border-color: transparent;
+}
+
+.btn-rename:hover:not(:disabled) {
+  background: var(--accent-dim);
+  color: var(--accent);
+}
+
+/* ── Move-to-folder select ───────────────────────────── */
+.move-select {
+  font-family: inherit;
+  font-size: 0.75rem;
+  background: var(--bg-input);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 0.2rem 0.4rem;
+  cursor: pointer;
+}
+
+/* ── Clipboard ───────────────────────────────────────── */
+.clip-input-area {
+  display: flex;
+  gap: 0.5rem;
+  align-items: flex-start;
+}
+
+.clip-textarea {
+  flex: 1;
+  resize: vertical;
+  min-height: 3rem;
+  max-height: 12rem;
+  font-size: 0.875rem;
+  line-height: 1.5;
+}
+
+.clip-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.clip-item {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 0.75rem 1rem;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.clip-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.clip-text {
+  font-family: "Consolas", "Monaco", "Courier New", monospace;
+  font-size: 0.85rem;
+  white-space: pre-wrap;
+  word-break: break-all;
+  max-height: 6rem;
+  overflow-y: auto;
+  color: var(--text);
+  line-height: 1.4;
+}
+
+.clip-meta {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  margin-top: 0.25rem;
+}
+
+.clip-actions {
+  display: flex;
+  gap: 0.4rem;
+  flex-shrink: 0;
+  align-items: center;
+}
+
+.btn-copy {
+  color: var(--success);
+  border-color: transparent;
+}
+
+.btn-copy:hover:not(:disabled) {
+  background: rgba(46, 213, 115, 0.15);
+  border-color: var(--success);
+}
+
+/* ── Notifications ───────────────────────────────────── */
+.notify-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.notify-textarea {
+  resize: vertical;
+  min-height: 2.5rem;
+  max-height: 8rem;
+  font-size: 0.875rem;
+  line-height: 1.5;
+}
+
+.notify-controls {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.notify-target {
+  flex: 1;
+  min-width: 0;
+}
+
+/* ── Responsive ──────────────────────────────────────── */
+@media (min-width: 480px) {
+  .app-main {
+    padding: 1.5rem;
+  }
+
+  .drop-zone {
+    padding: 3rem 1.5rem;
+  }
+}
+
+@media (min-width: 768px) {
+  h1 {
+    font-size: 1.75rem;
+  }
+
+  .app-main {
+    padding: 2rem;
+    gap: 2rem;
+  }
+}

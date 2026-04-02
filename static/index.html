@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#1a1a2e">
+    <meta name="description" content="Boobiki — LAN file transfer hub">
+    <link rel="manifest" href="/static/manifest.json">
+    <link rel="icon" href="/static/icons/icon-192.png" type="image/png">
+    <link rel="apple-touch-icon" href="/static/icons/icon-192.png">
+    <link rel="stylesheet" href="/static/style.css">
+    <title>Boobiki</title>
+</head>
+<body>
+    <!-- Header -->
+    <header class="app-header">
+        <div class="logo">
+            <h1>Boobiki</h1>
+        </div>
+        <div style="display:flex;align-items:center;gap:0.6rem;">
+            <span id="status-text" class="text-sm text-muted">Disconnected</span>
+            <span id="status-dot" class="status-dot" aria-label="Connection status"></span>
+        </div>
+    </header>
+
+    <!-- Main content -->
+    <main class="app-main">
+        <!-- Devices section -->
+        <section class="section" id="devices-section">
+            <div class="section-header">
+                <h2>Devices</h2>
+                <span id="device-count" class="text-sm text-muted"></span>
+            </div>
+            <ul class="device-list" id="device-list">
+                <li class="empty-state" id="no-devices">No other devices on the network</li>
+            </ul>
+        </section>
+
+        <!-- Clipboard section -->
+        <section class="section" id="clipboard-section">
+            <div class="section-header">
+                <h2>Clipboard</h2>
+                <span id="clip-count" class="text-sm text-muted"></span>
+            </div>
+            <div class="clip-input-area">
+                <textarea class="input clip-textarea" id="clip-input" placeholder="Paste or type text to share..." rows="3"></textarea>
+                <button class="btn btn-primary" id="clip-share-btn" disabled>Share</button>
+            </div>
+            <ul class="clip-list" id="clip-list">
+                <li class="empty-state" id="no-clips">No shared clips yet</li>
+            </ul>
+        </section>
+
+        <!-- Notifications section -->
+        <section class="section" id="notify-section">
+            <div class="section-header">
+                <h2>Notifications</h2>
+                <button class="btn btn-ghost btn-small" id="notify-permission-btn">Enable</button>
+            </div>
+            <div class="notify-form">
+                <textarea class="input notify-textarea" id="notify-input" placeholder="Type notification message..." rows="2"></textarea>
+                <div class="notify-controls">
+                    <select class="input notify-target" id="notify-target">
+                        <option value="all">All Devices</option>
+                    </select>
+                    <button class="btn btn-primary" id="notify-send-btn" disabled>Send</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Send file section -->
+        <section class="section" id="send-section">
+            <h2>Upload File</h2>
+            <div class="drop-zone" id="drop-zone">
+                <input type="file" id="file-input" aria-label="Choose file to send">
+                <div class="drop-zone-icon" aria-hidden="true">&#128449;</div>
+                <div class="drop-zone-text">Drop a file or click to browse</div>
+                <div class="drop-zone-hint">Choose Fast Transfer or Storage mode</div>
+            </div>
+            <div class="mode-toggle" id="mode-toggle">
+                <button class="mode-btn active" data-mode="fast_transfer" id="mode-fast">Fast Transfer</button>
+                <button class="mode-btn" data-mode="storage" id="mode-storage">Storage</button>
+            </div>
+            <div id="send-preview" class="hidden">
+                <div class="card" style="display:flex;align-items:center;justify-content:space-between;gap:0.75rem;">
+                    <div style="min-width:0;">
+                        <div id="send-filename" class="transfer-filename"></div>
+                        <div id="send-meta" class="transfer-meta"></div>
+                    </div>
+                    <div style="display:flex;gap:0.4rem;">
+                        <button class="btn btn-primary btn-small" id="send-btn" disabled>Send</button>
+                        <button class="btn btn-ghost btn-small" id="send-cancel">Cancel</button>
+                    </div>
+                </div>
+                <select class="input hidden" id="send-folder-select" style="margin-top:0.5rem;"></select>
+                <div class="progress-bar hidden" id="send-progress">
+                    <div class="progress-bar-fill" id="send-progress-fill" style="width:0%"></div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Transfers section -->
+        <section class="section" id="transfers-section">
+            <div class="section-header">
+                <h2>Transfers</h2>
+                <button class="btn btn-ghost btn-small" id="refresh-transfers">Refresh</button>
+            </div>
+            <div class="transfer-tabs" id="transfer-tabs">
+                <button class="tab-btn active" data-filter="all">All</button>
+                <button class="tab-btn" data-filter="fast_transfer">Fast Transfer</button>
+                <button class="tab-btn" data-filter="storage">Storage</button>
+            </div>
+            <div class="folder-bar hidden" id="folder-bar">
+                <nav class="breadcrumb" id="breadcrumb" aria-label="Folder path"></nav>
+                <div class="folder-actions">
+                    <button class="btn btn-ghost btn-small" id="new-folder-btn">New Folder</button>
+                    <button class="btn btn-ghost btn-small btn-delete" id="delete-folder-btn">Delete Folder</button>
+                </div>
+            </div>
+            <ul class="transfer-list" id="transfer-list">
+                <li class="empty-state" id="no-transfers">No transfers yet</li>
+            </ul>
+        </section>
+    </main>
+
+    <!-- Toast container -->
+    <div class="toast-container" id="toast-container" aria-live="polite"></div>
+
+    <div class="modal-overlay hidden" id="rename-modal">
+        <div class="modal">
+            <div class="modal-title">Rename File</div>
+            <input type="text" class="input" id="rename-input" placeholder="New filename">
+            <div class="modal-actions">
+                <button class="btn btn-ghost btn-small" id="rename-cancel">Cancel</button>
+                <button class="btn btn-primary btn-small" id="rename-confirm">Rename</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal-overlay hidden" id="folder-modal">
+        <div class="modal">
+            <div class="modal-title">New Folder</div>
+            <input type="text" class="input" id="folder-name-input" placeholder="Folder name">
+            <div class="modal-actions">
+                <button class="btn btn-ghost btn-small" id="folder-cancel">Cancel</button>
+                <button class="btn btn-primary btn-small" id="folder-confirm">Create</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="/static/app.js"></script>
+</body>
+</html>
